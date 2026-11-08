@@ -67,3 +67,18 @@ app.get('/api/studios', async (req, res) => {
 		res.status(500).json({ message: 'Failed to fetch studios', error: 'Internal Server Error' });
 	}
 });
+
+app.get('/api/studios/:id', async (req, res) => {
+	const { id } = req.params;
+	try {
+		const studio = await studiosCollection.findOne({ _id: new ObjectId(id) });
+
+		if (!studio) {
+			return res.status(404).json({ message: 'Studio not found' });
+		}
+		res.json(studio);
+	} catch (error) {
+		console.error(`Error fetching studio with id ${id}:`, error);
+		res.status(500).json({ message: 'Failed to fetch the studio', error: 'Internal Server Error' });
+	}
+});
