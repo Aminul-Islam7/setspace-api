@@ -130,3 +130,34 @@ app.delete('/api/studios/:id', async (req, res) => {
 		res.status(500).json({ message: 'Failed to delete the studio', error: 'Internal Server Error' });
 	}
 });
+
+app.post('/api/studios/:id/reviews', async (req, res) => {
+	const { id } = req.params;
+	const newReview = req.body;
+	const rating = Number(newReview.rating);
+
+	try {
+		const result = await studiosCollection.updateOne({ _id: new ObjectId(id) }, [
+			{
+				$set: {
+					reviews: { $concatArrays: ['$reviews', [newReview]] },
+					reviewCount: { $add: ['$reviewCount', 1] },
+					rankingScore: { $add: ['$rankingScore', rating] },
+				},
+			},
+			{
+				$set: {
+					rating: { $round: [{ $divide: ['$rankingScore', '$reviewCount'] }, 1] },
+				},
+			},
+		]);
+
+		if (result.matchedCount === 0) {
+			return res.status(404).json({ message: 'Studio not found' });
+		}
+		res.status(201).json({ message: 'Review added successfully' });
+	} catch (error) {
+		console.error(`Error posting review for the studio with id ${id}:`, error);
+		res.status(500).json({ message: 'Failed post review for the studio', error: 'Internal Server Error' });
+	}
+});
