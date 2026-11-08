@@ -88,7 +88,7 @@ app.post('/api/studios', async (req, res) => {
 
 	try {
 		result = await studiosCollection.insertOne(data);
-		res.json(result);
+		res.status(201).json({ message: 'Studio added successfully' });
 	} catch (error) {
 		console.error('Error inserting studio', error);
 		res.status(500).json({ message: 'Failed to post studio listing', error: 'Internal Server Error' });
@@ -108,7 +108,7 @@ app.patch('/api/studios/:id', async (req, res) => {
 		if (!studio) {
 			return res.status(404).json({ message: 'Studio not found' });
 		}
-		res.json(result);
+		res.status(200).json({ message: 'Studio details updated successfully' });
 	} catch (error) {
 		console.error(`Error updating data of studio with id ${id}`, error);
 		res.status(500).json({ message: 'Failed to update studio data', error: 'Internal Server Error' });
@@ -124,7 +124,7 @@ app.delete('/api/studios/:id', async (req, res) => {
 		if (!studio) {
 			return res.status(404).json({ message: 'Studio not found' });
 		}
-		res.json(result);
+		res.status(200).json({ message: 'Studio deleted successfully' });
 	} catch (error) {
 		console.error(`Error deleting studio with id ${id}`, error);
 		res.status(500).json({ message: 'Failed to delete the studio', error: 'Internal Server Error' });
