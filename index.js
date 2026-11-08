@@ -30,23 +30,39 @@ async function connectToMongoDB() {
 
 connectToMongoDB();
 
-/**
- * /api/studios [GET Public] - List & search studios (with category, search, sort and limit)
- * /api/studios/:id [GET Public] - Fetch single studio
- *
- * /api/studios [POST Protected] - Create new studio listing
- * /api/studios/:id [PATCH Protected (Owner)] - Update existing studio details
- * /api/studios/:id [DELETE Protected (Owner)] - Delete studio listing
- *
- * POST /api/studios/:id/reviews - Add star rating & review comment to a studio
- *
- * /api/bookings [POST Protected] - Create a studio reservation
- * /api/bookings/:id [GET Protected (Owner/Renter)] - Fetch a booking details
- * /api/bookings/:id/status [PATCH Protected] - Update a booking status
- *
- * /api/users/me/studios [GET Protected] - Fetch all studios owned by the user
- * /api/users/me/bookings [GET Protected] - Fetch all bookings made by the user
- * /api/users/me/incoming-bookings [GET Protected] (Host Reservation Inbox) -
- */
+app.get('/api/studios', async (req, res) => {
+	const { category, search, minPrice, maxPrice, top, page = 1, limit = 10 } = req.query;
 
-app.get('/api/studios', (req, res) => {});
+	const pageNum = Math.max(1, parseInt(page, 10));
+	const limitNum = Math.max(1, parseInt(limit, 10));
+
+	const match = {};
+
+	if (category) {
+		match.category = category;
+	}
+
+	if (minPrice || maxPrice) {
+		match.hourlyRate = {};
+		if (minPrice) match.hourlyRate.$gte = +minPrice;
+		if (maxPrice) match.hourlyRate.$lte = -maxPrice;
+	}
+
+	try {
+		if (top) {
+			const topLimit = Math.max(1, parseInt(top, 10));
+
+			const topStudios = await studiosCollection.find(match).sort({ rankingScore: -1 }).limit(topLimit).toArray();
+
+			return res.json(topStudios);
+		}
+
+		const skip = (pageNum - 1) * limitNum;
+		const studios = await studiosCollection.find(match).sort({ createdAt: -1 }).skip(skip).limit(limitNum).toArray();
+
+		res.json(studios);
+	} catch (error) {
+		console.error('Error fetching studios:', error);
+		res.status(500).json({ error: `Internal Server Error` });
+	}
+});
