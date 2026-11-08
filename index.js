@@ -94,3 +94,19 @@ app.post('/api/studios', async (req, res) => {
 		res.status(500).json({ message: 'Failed to post studio listing', error: 'Internal Server Error' });
 	}
 });
+
+app.patch('/api/studios/:id', async (req, res) => {
+	const { id } = req.params;
+
+	const { title, slug, category, description, hourlyRate, securityDeposit, maxCapacity, location, image, gallery, amenities } = req.body;
+
+	const updatedData = { title, slug, category, description, hourlyRate, securityDeposit, maxCapacity, location, image, gallery, amenities };
+
+	try {
+		result = await studiosCollection.updateOne({ _id: new ObjectId(id) }, updatedData);
+		res.json(result);
+	} catch (error) {
+		console.error(`Error updating data of studio with id ${id}`, error);
+		res.status(500).json({ message: 'Failed to update studio data', error: 'Internal Server Error' });
+	}
+});
