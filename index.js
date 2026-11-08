@@ -1,6 +1,7 @@
 import 'dotenv/config';
 
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
+
 import cors from 'cors';
 import express from 'express';
 
@@ -36,33 +37,33 @@ app.get('/api/studios', async (req, res) => {
 	const pageNum = Math.max(1, parseInt(page, 10));
 	const limitNum = Math.max(1, parseInt(limit, 10));
 
-	const match = {};
+	const query = {};
 
 	if (category) {
-		match.category = category;
+		query.category = category;
 	}
 
 	if (minPrice || maxPrice) {
-		match.hourlyRate = {};
-		if (minPrice) match.hourlyRate.$gte = +minPrice;
-		if (maxPrice) match.hourlyRate.$lte = -maxPrice;
+		query.hourlyRate = {};
+		if (minPrice) query.hourlyRate.$gte = +minPrice;
+		if (maxPrice) query.hourlyRate.$lte = -maxPrice;
 	}
 
 	try {
 		if (top) {
 			const topLimit = Math.max(1, parseInt(top, 10));
 
-			const topStudios = await studiosCollection.find(match).sort({ rankingScore: -1 }).limit(topLimit).toArray();
+			const topStudios = await studiosCollection.find(query).sort({ rankingScore: -1 }).limit(topLimit).toArray();
 
 			return res.json(topStudios);
 		}
 
 		const skip = (pageNum - 1) * limitNum;
-		const studios = await studiosCollection.find(match).sort({ createdAt: -1 }).skip(skip).limit(limitNum).toArray();
+		const studios = await studiosCollection.find(query).sort({ createdAt: -1 }).skip(skip).limit(limitNum).toArray();
 
 		res.json(studios);
 	} catch (error) {
 		console.error('Error fetching studios:', error);
-		res.status(500).json({ error: `Internal Server Error` });
+		res.status(500).json({ message: 'Failed to fetch studios', error: 'Internal Server Error' });
 	}
 });
