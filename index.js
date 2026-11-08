@@ -104,9 +104,29 @@ app.patch('/api/studios/:id', async (req, res) => {
 
 	try {
 		result = await studiosCollection.updateOne({ _id: new ObjectId(id) }, updatedData);
+
+		if (!studio) {
+			return res.status(404).json({ message: 'Studio not found' });
+		}
 		res.json(result);
 	} catch (error) {
 		console.error(`Error updating data of studio with id ${id}`, error);
 		res.status(500).json({ message: 'Failed to update studio data', error: 'Internal Server Error' });
+	}
+});
+
+app.delete('/api/studios/:id', async (req, res) => {
+	const { id } = req.params;
+
+	try {
+		result = await studiosCollection.deleteOne({ _id: new ObjectId(id) });
+
+		if (!studio) {
+			return res.status(404).json({ message: 'Studio not found' });
+		}
+		res.json(result);
+	} catch (error) {
+		console.error(`Error deleting studio with id ${id}`, error);
+		res.status(500).json({ message: 'Failed to delete the studio', error: 'Internal Server Error' });
 	}
 });
