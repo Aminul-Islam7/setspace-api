@@ -82,3 +82,15 @@ app.get('/api/studios/:id', async (req, res) => {
 		res.status(500).json({ message: 'Failed to fetch the studio', error: 'Internal Server Error' });
 	}
 });
+
+app.post('/api/studios', async (req, res) => {
+	const data = req.body;
+
+	try {
+		result = await studiosCollection.insertOne(data);
+		res.json(result);
+	} catch (error) {
+		console.error('Error inserting studio', error);
+		res.status(500).json({ message: 'Failed to post studio listing', error: 'Internal Server Error' });
+	}
+});
