@@ -95,8 +95,8 @@ app.get('/api/studios', async (req, res) => {
 		res.status(200).json({
 			data: studios,
 			success: true,
-			totalCount: studios?.length,
-			totalPages: Math.ceil(studios?.length / limitNum),
+			totalCount,
+			totalPages,
 		});
 		console.log('query successful');
 	} catch (error) {
