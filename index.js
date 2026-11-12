@@ -32,10 +32,22 @@ async function connectToMongoDB() {
 connectToMongoDB();
 
 app.get('/api/studios', async (req, res) => {
-	const { category, search, minPrice, maxPrice, top, page = 1, limit = 10 } = req.query;
+	const { category, search, sort, minPrice, maxPrice, top, page = 1, limit = 10 } = req.query;
+
+	const searchableFields = ['title', 'slug', 'category', 'description', 'location', 'amenities', 'ownerName', 'ownerEmail'];
 
 	const pageNum = Math.max(1, parseInt(page, 10));
 	const limitNum = Math.max(1, parseInt(limit, 10));
+
+	const sortOptions = {
+		newest: { createdAt: -1 },
+		featured: { rankingScore: -1 },
+		rating: { rating: -1 },
+		'price-asc': { hourlyRate: 1 },
+		'price-desc': { hourlyRate: -1 },
+	};
+	
+	const sortQuery = sortOptions[sort] || { createdAt: -1 };
 
 	const query = {};
 
@@ -43,10 +55,21 @@ app.get('/api/studios', async (req, res) => {
 		query.category = category;
 	}
 
+	if (search) {
+		const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		const regex = new RegExp(escapedSearch, 'i');
+
+		query.$or = searchableFields.map(field => ({ [field]: regex }));
+		console.log('searched');
+	}
+
+	if (sort) {
+	}
+
 	if (minPrice || maxPrice) {
 		query.hourlyRate = {};
 		if (minPrice) query.hourlyRate.$gte = +minPrice;
-		if (maxPrice) query.hourlyRate.$lte = -maxPrice;
+		if (maxPrice) query.hourlyRate.$lte = +maxPrice;
 	}
 
 	try {
@@ -55,13 +78,27 @@ app.get('/api/studios', async (req, res) => {
 
 			const topStudios = await studiosCollection.find(query).sort({ rankingScore: -1 }).limit(topLimit).toArray();
 
-			return res.json(topStudios);
+			return res.status(200).json({
+				data: topStudios,
+				success: true,
+				totalCount: topStudios.length,
+				totalPages: Math.ceil(topStudios.length / limitNum);
+			});
 		}
 
-		const skip = (pageNum - 1) * limitNum;
-		const studios = await studiosCollection.find(query).sort({ createdAt: -1 }).skip(skip).limit(limitNum).toArray();
+		const totalCount = await studiosCollection.countDocuments(query);
+		const totalPages = Math.ceil(totalCount / limitNum);
 
-		res.json(studios);
+		const skip = (pageNum - 1) * limitNum;
+		const studios = await studiosCollection.find(query).sort(sortQuery).skip(skip).limit(limitNum).toArray();
+
+		res.status(200).json({
+			data: studios,
+			success: true,
+			totalCount: studios?.length,
+			totalPages: Math.ceil(studios?.length / limitNum),
+		});
+		console.log('query successful');
 	} catch (error) {
 		console.error('Error fetching studios:', error);
 		res.status(500).json({ message: 'Failed to fetch studios', error: 'Internal Server Error' });
