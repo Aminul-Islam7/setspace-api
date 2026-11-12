@@ -46,7 +46,7 @@ app.get('/api/studios', async (req, res) => {
 		'price-asc': { hourlyRate: 1 },
 		'price-desc': { hourlyRate: -1 },
 	};
-	
+
 	const sortQuery = sortOptions[sort] || { createdAt: -1 };
 
 	const query = {};
@@ -82,7 +82,7 @@ app.get('/api/studios', async (req, res) => {
 				data: topStudios,
 				success: true,
 				totalCount: topStudios.length,
-				totalPages: Math.ceil(topStudios.length / limitNum);
+				totalPages: Math.ceil(topStudios.length / limitNum),
 			});
 		}
 
