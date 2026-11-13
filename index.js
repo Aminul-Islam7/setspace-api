@@ -251,3 +251,29 @@ app.get('/api/bookings/:id', async (req, res) => {
 		res.status(500).json({ message: 'Failed to fetch the booking record', error: 'Internal Server Error' });
 	}
 });
+
+app.patch('/api/bookings/:id', async (req, res) => {
+	const { id } = req.params;
+
+	if (!ObjectId.isValid(id)) {
+		return res.status(400).json({ message: 'Invalid booking ID' });
+	}
+
+	const updatedData = {};
+	if (req.body.status !== undefined) {
+		updatedData.status = req.body.status;
+	}
+
+	try {
+		const result = await bookingsCollection.updateOne({ _id: new ObjectId(id) }, { $set: updatedData });
+
+		if (result.matchedCount === 0) {
+			return res.status(404).json({ message: 'Booking not found' });
+		}
+
+		res.status(200).json({ message: 'Booking status updated successfully' });
+	} catch (error) {
+		console.error(`Error updating booking status with id ${id}`, error);
+		res.status(500).json({ message: 'Failed to update booking status' });
+	}
+});
