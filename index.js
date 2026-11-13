@@ -15,6 +15,18 @@ const bookingsCollection = db.collection('bookings');
 app.use(cors());
 app.use(express.json());
 
+// Mock Auth User
+app.use((req, res, next) => {
+	req.user = {
+		id: 'usr_dev_001',
+		name: 'Alex Rivera',
+		email: 'alex.rivera@setspace.dev',
+		avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+	};
+
+	next();
+});
+
 app.listen(PORT, () => {
 	console.log(`SetSpace API server is running on port ${PORT}`);
 });
