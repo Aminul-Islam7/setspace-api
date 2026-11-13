@@ -111,7 +111,7 @@ app.get('/api/studios/:id', async (req, res) => {
 		if (!studio) {
 			return res.status(404).json({ message: 'Studio not found' });
 		}
-		res.json(studio);
+		res.status(200).json(studio);
 	} catch (error) {
 		console.error(`Error fetching studio with id ${id}:`, error);
 		res.status(500).json({ message: 'Failed to fetch the studio', error: 'Internal Server Error' });
@@ -206,5 +206,20 @@ app.post('/api/bookings/', async (req, res) => {
 	} catch (error) {
 		console.error('Error inserting booking', error);
 		res.status(500).json({ message: 'Failed to post the booking request', error: 'Internal Server Error' });
+	}
+});
+
+app.get('/api/bookings/:id', async (req, res) => {
+	const { id } = req.params;
+	try {
+		const booking = await bookingsCollection.findOne({ _id: new ObjectId(id) });
+
+		if (!booking) {
+			return res.status(404).json({ message: 'Booking not found' });
+		}
+		res.status(200).json(booking);
+	} catch (error) {
+		console.error(`Error fetching booking with id ${id}:`, error);
+		res.status(500).json({ message: 'Failed to fetch the booking record', error: 'Internal Server Error' });
 	}
 });
