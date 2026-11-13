@@ -313,3 +313,27 @@ app.get('api/users/me/studios', async (req, res) => {
 		});
 	}
 });
+
+app.get('api/users/me/bookings', async (req, res) => {
+	try {
+		if (!req.user?.email) {
+			return res.status(401).json({
+				success: false,
+				message: 'Unauthorized. Please log in to view your bookings.',
+			});
+		}
+
+		const studios = await bookingsCollection.find({ userEmail: req.user.email }).sort({ createdAt: -1 }).toArray();
+
+		return res.status(200).json({
+			data: studios,
+			success: true,
+		});
+	} catch (error) {
+		console.error('Error fetching user bookings:', error);
+		return res.status(500).json({
+			success: false,
+			message: 'Failed to fetch your bookings.',
+		});
+	}
+});
