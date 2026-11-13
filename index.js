@@ -142,20 +142,26 @@ app.patch('/api/studios/:id', async (req, res) => {
 		return res.status(400).json({ message: 'Invalid studio ID' });
 	}
 
-	const { title, slug, category, description, hourlyRate, securityDeposit, maxCapacity, location, image, gallery, amenities } = req.body;
+	const allowedFields = ['title', 'slug', 'category', 'description', 'hourlyRate', 'securityDeposit', 'maxCapacity', 'location', 'image', 'gallery', 'amenities'];
 
-	const updatedData = { title, slug, category, description, hourlyRate, securityDeposit, maxCapacity, location, image, gallery, amenities };
+	const updatedData = {};
+	for (const field of allowedFields) {
+		if (req.body[field] !== undefined) {
+			updatedData[field] = req.body[field];
+		}
+	}
 
 	try {
-		result = await studiosCollection.updateOne({ _id: new ObjectId(id) }, updatedData);
+		const result = await studiosCollection.updateOne({ _id: new ObjectId(id) }, { $set: updatedData });
 
-		if (!studio) {
+		if (result.matchedCount === 0) {
 			return res.status(404).json({ message: 'Studio not found' });
 		}
+
 		res.status(200).json({ message: 'Studio details updated successfully' });
 	} catch (error) {
 		console.error(`Error updating data of studio with id ${id}`, error);
-		res.status(500).json({ message: 'Failed to update studio data', error: 'Internal Server Error' });
+		res.status(500).json({ message: 'Failed to update studio data' });
 	}
 });
 
