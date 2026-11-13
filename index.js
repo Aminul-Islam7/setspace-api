@@ -105,6 +105,11 @@ app.get('/api/studios', async (req, res) => {
 
 app.get('/api/studios/:id', async (req, res) => {
 	const { id } = req.params;
+
+	if (!ObjectId.isValid(id)) {
+		return res.status(400).json({ message: 'Invalid studio ID' });
+	}
+
 	try {
 		const studio = await studiosCollection.findOne({ _id: new ObjectId(id) });
 
@@ -133,6 +138,10 @@ app.post('/api/studios', async (req, res) => {
 app.patch('/api/studios/:id', async (req, res) => {
 	const { id } = req.params;
 
+	if (!ObjectId.isValid(id)) {
+		return res.status(400).json({ message: 'Invalid studio ID' });
+	}
+
 	const { title, slug, category, description, hourlyRate, securityDeposit, maxCapacity, location, image, gallery, amenities } = req.body;
 
 	const updatedData = { title, slug, category, description, hourlyRate, securityDeposit, maxCapacity, location, image, gallery, amenities };
@@ -153,6 +162,10 @@ app.patch('/api/studios/:id', async (req, res) => {
 app.delete('/api/studios/:id', async (req, res) => {
 	const { id } = req.params;
 
+	if (!ObjectId.isValid(id)) {
+		return res.status(400).json({ message: 'Invalid studio ID' });
+	}
+
 	try {
 		result = await studiosCollection.deleteOne({ _id: new ObjectId(id) });
 
@@ -170,6 +183,10 @@ app.post('/api/studios/:id/reviews', async (req, res) => {
 	const { id } = req.params;
 	const newReview = req.body;
 	const rating = Number(newReview.rating);
+
+	if (!ObjectId.isValid(id)) {
+		return res.status(400).json({ message: 'Invalid studio ID' });
+	}
 
 	try {
 		const result = await studiosCollection.updateOne({ _id: new ObjectId(id) }, [
@@ -211,6 +228,11 @@ app.post('/api/bookings/', async (req, res) => {
 
 app.get('/api/bookings/:id', async (req, res) => {
 	const { id } = req.params;
+
+	if (!ObjectId.isValid(id)) {
+		return res.status(400).json({ message: 'Invalid bookings ID' });
+	}
+
 	try {
 		const booking = await bookingsCollection.findOne({ _id: new ObjectId(id) });
 
