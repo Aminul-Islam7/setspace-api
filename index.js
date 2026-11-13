@@ -289,3 +289,27 @@ app.patch('/api/bookings/:id', async (req, res) => {
 		res.status(500).json({ message: 'Failed to update booking status' });
 	}
 });
+
+app.get('api/users/me/studios', async (req, res) => {
+	try {
+		if (!req.user?.email) {
+			return res.status(401).json({
+				success: false,
+				message: 'Unauthorized. Please log in to view your listings.',
+			});
+		}
+
+		const studios = await studiosCollection.find({ ownerEmail: req.user.email }).sort({ createdAt: -1 }).toArray();
+
+		return res.status(200).json({
+			data: studios,
+			success: true,
+		});
+	} catch (error) {
+		console.error('Error fetching user studios:', error);
+		return res.status(500).json({
+			success: false,
+			message: 'Failed to fetch your studio listings.',
+		});
+	}
+});
