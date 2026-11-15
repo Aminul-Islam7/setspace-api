@@ -1,6 +1,7 @@
 import 'dotenv/config';
 
 import { MongoClient, ObjectId } from 'mongodb';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 import cors from 'cors';
 import express from 'express';
@@ -14,18 +15,6 @@ const bookingsCollection = db.collection('bookings');
 
 app.use(cors());
 app.use(express.json());
-
-// Mock Auth User
-app.use((req, res, next) => {
-	req.user = {
-		id: 'usr_dev_001',
-		name: 'Alex Rivera',
-		email: 'alex.rivera@setspace.dev',
-		avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-	};
-
-	next();
-});
 
 app.listen(PORT, () => {
 	console.log(`SetSpace API server is running on port ${PORT}`);
@@ -42,6 +31,28 @@ async function connectToMongoDB() {
 }
 
 connectToMongoDB();
+
+const verifyToken = async (req, res, next) => {
+	const authHeader = req.headers.authorization;
+	if (!authHeader) {
+		return res.status(401).send({ message: 'Unauthorized' });
+	}
+
+	const token = authHeader.split(' ')[1];
+	if (!token) {
+		return res.status(401).send({ message: 'Unauthorized' });
+	}
+
+	const JWKS = createRemoteJWKSet(new URL(`${process.env.CLIENT_URL}/api/auth/jwks`));
+
+	try {
+		const { payload } = await jwtVerify(token, JWKS);
+		req.user = payload;
+		next();
+	} catch (error) {
+		return res.status(500).send({ message: 'Internal Server Error' });
+	}
+};
 
 app.get('/api/studios', async (req, res) => {
 	const { category, search, sort, minPrice, maxPrice, top, page = 1, limit = 10 } = req.query;
@@ -135,7 +146,7 @@ app.get('/api/studios/:id', async (req, res) => {
 	}
 });
 
-app.post('/api/studios', async (req, res) => {
+app.post('/api/studios', verifyToken, async (req, res) => {
 	const data = req.body;
 
 	try {
@@ -147,7 +158,7 @@ app.post('/api/studios', async (req, res) => {
 	}
 });
 
-app.patch('/api/studios/:id', async (req, res) => {
+app.patch('/api/studios/:id', verifyToken, async (req, res) => {
 	const { id } = req.params;
 
 	if (!ObjectId.isValid(id)) {
@@ -177,7 +188,7 @@ app.patch('/api/studios/:id', async (req, res) => {
 	}
 });
 
-app.delete('/api/studios/:id', async (req, res) => {
+app.delete('/api/studios/:id', verifyToken, async (req, res) => {
 	const { id } = req.params;
 
 	if (!ObjectId.isValid(id)) {
@@ -187,7 +198,7 @@ app.delete('/api/studios/:id', async (req, res) => {
 	try {
 		result = await studiosCollection.deleteOne({ _id: new ObjectId(id) });
 
-		if (!studio) {
+		if (result.deletedCount === 0) {
 			return res.status(404).json({ message: 'Studio not found' });
 		}
 		res.status(200).json({ message: 'Studio deleted successfully' });
@@ -232,7 +243,7 @@ app.post('/api/studios/:id/reviews', async (req, res) => {
 	}
 });
 
-app.post('/api/bookings/', async (req, res) => {
+app.post('/api/bookings/', verifyToken, async (req, res) => {
 	const data = req.body;
 
 	const { studioId, bookingDate, startTime, endTime } = data;
@@ -298,7 +309,7 @@ app.get('/api/bookings/availability', async (req, res) => {
 	}
 });
 
-app.get('/api/bookings/:id', async (req, res) => {
+app.get('/api/bookings/:id', verifyToken, async (req, res) => {
 	const { id } = req.params;
 
 	if (!ObjectId.isValid(id)) {
@@ -318,7 +329,7 @@ app.get('/api/bookings/:id', async (req, res) => {
 	}
 });
 
-app.patch('/api/bookings/:id', async (req, res) => {
+app.patch('/api/bookings/:id', verifyToken, async (req, res) => {
 	const { id } = req.params;
 
 	if (!ObjectId.isValid(id)) {
@@ -344,7 +355,7 @@ app.patch('/api/bookings/:id', async (req, res) => {
 	}
 });
 
-app.get('api/users/me/studios', async (req, res) => {
+app.get('/api/users/me/studios', verifyToken, async (req, res) => {
 	try {
 		if (!req.user?.email) {
 			return res.status(401).json({
@@ -368,7 +379,7 @@ app.get('api/users/me/studios', async (req, res) => {
 	}
 });
 
-app.get('api/users/me/bookings', async (req, res) => {
+app.get('/api/users/me/bookings', verifyToken, async (req, res) => {
 	try {
 		if (!req.user?.email) {
 			return res.status(401).json({
