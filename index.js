@@ -236,11 +236,45 @@ app.post('/api/bookings/', async (req, res) => {
 	const data = req.body;
 
 	try {
-		result = await bookingsCollection.insertOne(data);
+		await bookingsCollection.insertOne(data);
 		res.status(201).json({ message: 'Booking created successfully' });
 	} catch (error) {
 		console.error('Error inserting booking', error);
 		res.status(500).json({ message: 'Failed to post the booking request', error: 'Internal Server Error' });
+	}
+});
+
+app.get('/api/bookings/availability', async (req, res) => {
+	const { studioId, date } = req.query;
+
+	const query = {
+		studioId: studioId,
+		status: { $ne: 'Cancelled' },
+	};
+
+	if (date) {
+		query.bookingDate = date;
+	}
+
+	try {
+		const slots = await bookingsCollection
+			.find(query, {
+				projection: {
+					_id: 0,
+					bookingDate: 1,
+					startTime: 1,
+					endTime: 1,
+				},
+			})
+			.toArray();
+		console.log(slots);
+		res.status(200).json({
+			success: true,
+			data: slots,
+		});
+	} catch (error) {
+		console.error(`Error fetching availability for studio ${id}:`, error);
+		res.status(500).json({ success: false, message: 'Failed to fetch studio availability' });
 	}
 });
 
