@@ -235,7 +235,27 @@ app.post('/api/studios/:id/reviews', async (req, res) => {
 app.post('/api/bookings/', async (req, res) => {
 	const data = req.body;
 
+	const { studioId, bookingDate, startTime, endTime } = data;
+
+	if (startTime >= endTime) {
+		return res.status(400).json({ message: 'End time must be after start time' });
+	}
+
 	try {
+		const existingBooking = await bookingsCollection.findOne({
+			studioId,
+			bookingDate,
+			status: { $ne: 'Cancelled' },
+			startTime: { $lt: endTime },
+			endTime: { $gt: startTime },
+		});
+
+		if (existingBooking) {
+			return res.status(409).json({
+				message: 'This time slot is already booked. Please choose another time.',
+			});
+		}
+
 		await bookingsCollection.insertOne(data);
 		res.status(201).json({ message: 'Booking created successfully' });
 	} catch (error) {
