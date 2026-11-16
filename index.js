@@ -141,7 +141,7 @@ app.post('/api/studios', verifyToken, async (req, res) => {
 	};
 
 	try {
-		result = await studiosCollection.insertOne(data);
+		await studiosCollection.insertOne(data);
 		res.status(201).json({ message: 'Studio added successfully' });
 	} catch (error) {
 		console.error('Error inserting studio', error);
@@ -200,20 +200,55 @@ app.delete('/api/studios/:id', verifyToken, async (req, res) => {
 	}
 });
 
-app.post('/api/studios/:id/reviews', async (req, res) => {
+app.post('/api/studios/:id/reviews', verifyToken, async (req, res) => {
 	const { id } = req.params;
-	const newReview = req.body;
-	const rating = Number(newReview.rating);
 
-	if (!ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid studio ID' });
+	if (!ObjectId.isValid(id)) {
+		return res.status(400).json({ message: 'Invalid studio ID' });
+	}
 
 	try {
-		const result = await studiosCollection.updateOne({ _id: new ObjectId(id) }, [
+		const studio = await studiosCollection.findOne({ _id: new ObjectId(id) });
+		if (!studio) {
+			return res.status(404).json({ message: 'Studio not found' });
+		}
+
+		const completedBooking = await bookingsCollection.findOne({
+			studioId: id,
+			userEmail: req.user.email,
+			status: 'Completed',
+		});
+
+		if (!completedBooking) {
+			return res.status(403).json({
+				message: 'Forbidden: You can only review studios after completing a reservation.',
+			});
+		}
+
+		const alreadyReviewed = studio.reviews?.some(r => r.userEmail && r.userEmail.toLowerCase() === req.user.email.toLowerCase());
+
+		if (alreadyReviewed) {
+			return res.status(400).json({
+				message: 'You have already posted a review for this workspace.',
+			});
+		}
+
+		const rating = Math.min(5, Math.max(1, Number(req.body.rating) || 5));
+		const newReview = {
+			userName: req.user.name,
+			userEmail: req.user.email,
+			userAvatar: req.user.image,
+			rating,
+			comment: req.body.comment?.trim() || '',
+			createdAt: new Date().toISOString(),
+		};
+
+		await studiosCollection.updateOne({ _id: new ObjectId(id) }, [
 			{
 				$set: {
-					reviews: { $concatArrays: ['$reviews', [newReview]] },
-					reviewCount: { $add: ['$reviewCount', 1] },
-					rankingScore: { $add: ['$rankingScore', rating] },
+					reviews: { $concatArrays: [{ $ifNull: ['$reviews', []] }, [newReview]] },
+					reviewCount: { $add: [{ $ifNull: ['$reviewCount', 0] }, 1] },
+					rankingScore: { $add: [{ $ifNull: ['$rankingScore', 0] }, rating] },
 				},
 			},
 			{
@@ -223,12 +258,10 @@ app.post('/api/studios/:id/reviews', async (req, res) => {
 			},
 		]);
 
-		if (result.matchedCount === 0) return res.status(404).json({ message: 'Studio not found' });
-
-		res.status(201).json({ message: 'Review added successfully' });
+		res.status(201).json({ message: 'Review added successfully', review: newReview });
 	} catch (error) {
-		console.error(`Error posting review for the studio with id ${id}:`, error);
-		res.status(500).json({ message: 'Failed post review for the studio', error: 'Internal Server Error' });
+		console.error(`Error posting review for studio ${id}:`, error);
+		res.status(500).json({ message: 'Failed to post review', error: 'Internal Server Error' });
 	}
 });
 
