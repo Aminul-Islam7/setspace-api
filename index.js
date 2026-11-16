@@ -34,14 +34,10 @@ connectToMongoDB();
 
 const verifyToken = async (req, res, next) => {
 	const authHeader = req.headers.authorization;
-	if (!authHeader) {
-		return res.status(401).send({ message: 'Unauthorized' });
-	}
+	if (!authHeader) return res.status(401).send({ message: 'Unauthorized' });
 
 	const token = authHeader.split(' ')[1];
-	if (!token) {
-		return res.status(401).send({ message: 'Unauthorized' });
-	}
+	if (!token) return res.status(401).send({ message: 'Unauthorized' });
 
 	const JWKS = createRemoteJWKSet(new URL(`${process.env.CLIENT_URL}/api/auth/jwks`));
 
@@ -74,18 +70,13 @@ app.get('/api/studios', async (req, res) => {
 
 	const query = {};
 
-	if (category) {
-		query.category = category;
-	}
+	if (category) query.category = category;
 
 	if (search) {
 		const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 		const regex = new RegExp(escapedSearch, 'i');
 
 		query.$or = searchableFields.map(field => ({ [field]: regex }));
-	}
-
-	if (sort) {
 	}
 
 	if (minPrice || maxPrice) {
@@ -129,16 +120,13 @@ app.get('/api/studios', async (req, res) => {
 app.get('/api/studios/:id', async (req, res) => {
 	const { id } = req.params;
 
-	if (!ObjectId.isValid(id)) {
-		return res.status(400).json({ message: 'Invalid studio ID' });
-	}
+	if (!ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid studio ID' });
 
 	try {
 		const studio = await studiosCollection.findOne({ _id: new ObjectId(id) });
 
-		if (!studio) {
-			return res.status(404).json({ message: 'Studio not found' });
-		}
+		if (!studio) return res.status(404).json({ message: 'Studio not found' });
+
 		res.status(200).json(studio);
 	} catch (error) {
 		console.error(`Error fetching studio with id ${id}:`, error);
@@ -147,7 +135,10 @@ app.get('/api/studios/:id', async (req, res) => {
 });
 
 app.post('/api/studios', verifyToken, async (req, res) => {
-	const data = req.body;
+	const data = {
+		...req.body,
+		ownerEmail: req.user.email,
+	};
 
 	try {
 		result = await studiosCollection.insertOne(data);
@@ -165,22 +156,22 @@ app.patch('/api/studios/:id', verifyToken, async (req, res) => {
 		return res.status(400).json({ message: 'Invalid studio ID' });
 	}
 
-	const allowedFields = ['title', 'slug', 'category', 'description', 'hourlyRate', 'securityDeposit', 'maxCapacity', 'location', 'image', 'gallery', 'amenities'];
-
-	const updatedData = {};
-	for (const field of allowedFields) {
-		if (req.body[field] !== undefined) {
-			updatedData[field] = req.body[field];
-		}
-	}
-
 	try {
-		const result = await studiosCollection.updateOne({ _id: new ObjectId(id) }, { $set: updatedData });
+		const studio = await studiosCollection.findOne({ _id: new ObjectId(id) });
+		if (!studio) return res.status(404).json({ message: 'Studio not found' });
 
-		if (result.matchedCount === 0) {
-			return res.status(404).json({ message: 'Studio not found' });
+		if (studio.ownerEmail !== req.user.email) return res.status(403).json({ message: 'Forbidden: You do not own this studio' });
+
+		const allowedFields = ['title', 'slug', 'category', 'description', 'hourlyRate', 'securityDeposit', 'maxCapacity', 'location', 'image', 'gallery', 'amenities'];
+
+		const updatedData = {};
+		for (const field of allowedFields) {
+			if (req.body[field] !== undefined) {
+				updatedData[field] = req.body[field];
+			}
 		}
 
+		await studiosCollection.updateOne({ _id: new ObjectId(id) }, { $set: updatedData });
 		res.status(200).json({ message: 'Studio details updated successfully' });
 	} catch (error) {
 		console.error(`Error updating data of studio with id ${id}`, error);
@@ -191,16 +182,17 @@ app.patch('/api/studios/:id', verifyToken, async (req, res) => {
 app.delete('/api/studios/:id', verifyToken, async (req, res) => {
 	const { id } = req.params;
 
-	if (!ObjectId.isValid(id)) {
-		return res.status(400).json({ message: 'Invalid studio ID' });
-	}
+	if (!ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid studio ID' });
 
 	try {
-		result = await studiosCollection.deleteOne({ _id: new ObjectId(id) });
+		const studio = await studiosCollection.findOne({ _id: new ObjectId(id) });
+		if (!studio) return res.status(404).json({ message: 'Studio not found' });
 
-		if (result.deletedCount === 0) {
-			return res.status(404).json({ message: 'Studio not found' });
+		if (studio.ownerEmail !== req.user.email) {
+			return res.status(403).json({ message: 'Forbidden: You do not own this studio' });
 		}
+
+		await studiosCollection.deleteOne({ _id: new ObjectId(id) });
 		res.status(200).json({ message: 'Studio deleted successfully' });
 	} catch (error) {
 		console.error(`Error deleting studio with id ${id}`, error);
@@ -213,9 +205,7 @@ app.post('/api/studios/:id/reviews', async (req, res) => {
 	const newReview = req.body;
 	const rating = Number(newReview.rating);
 
-	if (!ObjectId.isValid(id)) {
-		return res.status(400).json({ message: 'Invalid studio ID' });
-	}
+	if (!ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid studio ID' });
 
 	try {
 		const result = await studiosCollection.updateOne({ _id: new ObjectId(id) }, [
@@ -233,9 +223,8 @@ app.post('/api/studios/:id/reviews', async (req, res) => {
 			},
 		]);
 
-		if (result.matchedCount === 0) {
-			return res.status(404).json({ message: 'Studio not found' });
-		}
+		if (result.matchedCount === 0) return res.status(404).json({ message: 'Studio not found' });
+
 		res.status(201).json({ message: 'Review added successfully' });
 	} catch (error) {
 		console.error(`Error posting review for the studio with id ${id}:`, error);
@@ -244,13 +233,14 @@ app.post('/api/studios/:id/reviews', async (req, res) => {
 });
 
 app.post('/api/bookings/', verifyToken, async (req, res) => {
-	const data = req.body;
+	const data = {
+		...req.body,
+		userEmail: req.user.email,
+	};
 
 	const { studioId, bookingDate, startTime, endTime } = data;
 
-	if (startTime >= endTime) {
-		return res.status(400).json({ message: 'End time must be after start time' });
-	}
+	if (startTime >= endTime) return res.status(400).json({ message: 'End time must be after start time' });
 
 	try {
 		const existingBooking = await bookingsCollection.findOne({
@@ -283,9 +273,7 @@ app.get('/api/bookings/availability', async (req, res) => {
 		status: { $ne: 'Cancelled' },
 	};
 
-	if (date) {
-		query.bookingDate = date;
-	}
+	if (date) query.bookingDate = date;
 
 	try {
 		const slots = await bookingsCollection
@@ -312,16 +300,18 @@ app.get('/api/bookings/availability', async (req, res) => {
 app.get('/api/bookings/:id', verifyToken, async (req, res) => {
 	const { id } = req.params;
 
-	if (!ObjectId.isValid(id)) {
-		return res.status(400).json({ message: 'Invalid bookings ID' });
-	}
+	if (!ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid bookings ID' });
 
 	try {
 		const booking = await bookingsCollection.findOne({ _id: new ObjectId(id) });
 
-		if (!booking) {
-			return res.status(404).json({ message: 'Booking not found' });
-		}
+		if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+		const isBooker = booking.userEmail === req.user.email;
+		const isHost = booking.ownerEmail === req.user.email;
+
+		if (!isBooker && !isHost) return res.status(403).json({ message: 'Forbidden: You cannot view this reservation' });
+
 		res.status(200).json(booking);
 	} catch (error) {
 		console.error(`Error fetching booking with id ${id}:`, error);
@@ -332,9 +322,7 @@ app.get('/api/bookings/:id', verifyToken, async (req, res) => {
 app.patch('/api/bookings/:id', verifyToken, async (req, res) => {
 	const { id } = req.params;
 
-	if (!ObjectId.isValid(id)) {
-		return res.status(400).json({ message: 'Invalid booking ID' });
-	}
+	if (!ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid booking ID' });
 
 	const updatedData = {};
 	if (req.body.status !== undefined) {
@@ -342,11 +330,21 @@ app.patch('/api/bookings/:id', verifyToken, async (req, res) => {
 	}
 
 	try {
-		const result = await bookingsCollection.updateOne({ _id: new ObjectId(id) }, { $set: updatedData });
+		const booking = await bookingsCollection.findOne({ _id: new ObjectId(id) });
+		if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
-		if (result.matchedCount === 0) {
-			return res.status(404).json({ message: 'Booking not found' });
+		const isBooker = booking.userEmail === req.user.email;
+		const isHost = booking.ownerEmail === req.user.email;
+
+		if (!isBooker && !isHost) {
+			return res.status(403).json({ message: 'Forbidden: You cannot modify this reservation' });
 		}
+
+		if (isBooker && !isHost && req.body.status !== 'Cancelled') {
+			return res.status(403).json({ message: 'You can only cancel your booking' });
+		}
+
+		await bookingsCollection.updateOne({ _id: new ObjectId(id) }, { $set: updatedData });
 
 		res.status(200).json({ message: 'Booking status updated successfully' });
 	} catch (error) {
