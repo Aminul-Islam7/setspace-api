@@ -419,7 +419,10 @@ app.get('/api/users/me/bookings', verifyToken, async (req, res) => {
 			});
 		}
 
-		const studios = await bookingsCollection.find({ userEmail: req.user.email }).sort({ createdAt: -1 }).toArray();
+		const { role } = req.query;
+		const filter = role === 'host' ? { ownerEmail: req.user.email } : { userEmail: req.user.email };
+
+		const studios = await bookingsCollection.find(filter).sort({ createdAt: -1 }).toArray();
 
 		return res.status(200).json({
 			data: studios,
