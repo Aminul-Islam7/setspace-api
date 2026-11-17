@@ -7,8 +7,10 @@ RESTful backend service for **SetSpace** — the peer-to-peer marketplace for bo
 ## Deployment & Links
 
 - **Live Base URL**: [`https://setspace-api-v1.vercel.app`](https://setspace-api-v1.vercel.app)
-- **Client Application**: [`https://setspace-studios.vercel.app`](https://setspace-studios.vercel.app)
 - **Repository**: [`github.com/Aminul-Islam7/setspace-api`](https://github.com/Aminul-Islam7/setspace-api)
+
+- **Client Application**: [`https://setspace-studios.vercel.app`](https://setspace-studios.vercel.app)
+- **Client Repository**: [`github.com/Aminul-Islam7/setspace`](https://github.com/Aminul-Islam7/setspace)
 
 ---
 
