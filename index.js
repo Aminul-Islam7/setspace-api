@@ -32,6 +32,9 @@ async function connectToMongoDB() {
 
 connectToMongoDB();
 
+const clientUrl = process.env.CLIENT_URL || 'https://setspace-studios.vercel.app';
+const JWKS = createRemoteJWKSet(new URL(`${clientUrl}/api/auth/jwks`));
+
 const verifyToken = async (req, res, next) => {
 	const authHeader = req.headers.authorization;
 	if (!authHeader) return res.status(401).send({ message: 'Unauthorized' });
@@ -46,6 +49,7 @@ const verifyToken = async (req, res, next) => {
 		req.user = payload;
 		next();
 	} catch (error) {
+		console.error('JWT Verification Error:', error.message || error);
 		return res.status(500).send({ message: 'Internal Server Error' });
 	}
 };
